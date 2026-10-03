@@ -19,6 +19,7 @@ SEEDS = list(range(10))
 SCALED_SEEDS = list(range(5))
 AXIS = {"seed": "seeds", "split": "alternative splits", "hparam": "hyperparameter perturbations"}
 RAM_BUDGET = 128e6  # bytes a single sandboxed run may use for its data (browser-safe)
+CATEGORICAL_ALTS = {"gamma": ["scale", "auto"], "weights": ["uniform", "distance"], "criterion": ["gini", "entropy"]}
 STAGES = [
     ("parse", "Parse paper", "Tables and setup sentences become structured claims"),
     ("map", "Map repo", "README commands, configs and AST link each claim to code"),
@@ -728,14 +729,26 @@ class Audit:
                 self.log(f"inferred {p} = {best['value']} (sweep spread {spread:.2f} pt -> "
                          f"{'material' if material else 'immaterial'})", "warn" if material else "ok")
             else:
-                cands = [cur / 10, cur, cur * 10] if isinstance(cur, (int, float)) else [cur]
-                if isinstance(cur, int):
+                if isinstance(cur, bool) or not isinstance(cur, (int, float)):
+                    cands = [cur] + [v for v in CATEGORICAL_ALTS.get(p, []) if v != cur]
+                elif isinstance(cur, int):
                     cands = [max(1, cur // 10), cur, cur * 10]
+                else:
+                    cands = [cur / 10, cur, cur * 10]
                 tested = []
                 for val in cands:
                     vals, runs = self.seed_values(c, overrides={f["method"]: {p: val}}, purpose=f"infer {p}={val}",
                                                   method=method)
-                    tested.append({"value": val, "mean": stats.mean_std(vals)[0]})
+                    if vals:  # a value the code cannot run with is skipped, not averaged
+                        tested.append({"value": val, "mean": stats.mean_std(vals)[0]})
+                if len(tested) < 2:
+                    f["inference"] = {"param": p, "claim": c["id"], "candidates": tested, "spread": 0.0, "method": "sweep"}
+                    f["material"], f["status"], f["severity"] = False, "immaterial", "none"
+                    f["detail"] = (f"The paper never states {p}; the code uses {cur}. Preflight could not re-run it with another value, "
+                                   f"so this stays a note for the authors.")
+                    self.emit("finding", f)
+                    self.log(f"{p} omitted: no other value could be re-run -> note only", "ok")
+                    continue
                 spread = max(d["mean"] for d in tested) - min(d["mean"] for d in tested)
                 material = spread >= 0.5
                 f["inference"] = {"param": p, "claim": c["id"], "candidates": tested, "spread": spread,

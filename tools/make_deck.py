@@ -621,6 +621,10 @@ def main():
     slide8(S[7], R, T, D)
     name = "EL-01_" + re.sub(r"[^A-Za-z0-9]+", "", a.team.replace("Team", "")) + ".pptx"
     out = os.path.join(DECK, name)
+    cp = prs.core_properties  # the template carries other people's names; the submission must carry none
+    cp.author = cp.last_modified_by = a.team
+    cp.title = "Preflight: EL-01 AI-Powered ML Paper Reproducibility Platform"
+    cp.subject, cp.keywords, cp.comments, cp.category = "Elevate 1.0", "", "", ""
     prs.save(out)
     print("wrote", out)
 

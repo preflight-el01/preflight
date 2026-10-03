@@ -11,8 +11,10 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from engine import Audit, InProcessExecutor, load_paper_dir, whatif  # noqa: E402
 from engine.report import _clean  # noqa: E402
+from scrub import scrub  # noqa: E402
 
 WHATIF_C = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
 
@@ -40,5 +42,5 @@ if __name__ == "__main__":
     data = {pid: record(pid) for pid in ("paper_a", "paper_b", "paper_c", "paper_r")}
     os.makedirs(os.path.join(ROOT, "web"), exist_ok=True)
     with open(os.path.join(ROOT, "web", "recorded.json"), "w", encoding="utf-8") as f:
-        json.dump(_clean(data), f, separators=(",", ":"))
+        json.dump(scrub(_clean(data)), f, separators=(",", ":"))
     print("wrote web/recorded.json", os.path.getsize(os.path.join(ROOT, "web", "recorded.json")) // 1024, "KB")

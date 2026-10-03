@@ -1,0 +1,17 @@
+# docker compose up --build   ->  http://localhost:8000
+services:
+  runner-image:
+    build: { context: ., dockerfile: Dockerfile.runner }
+    image: preflight-runner
+    entrypoint: ["true"]
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      PREFLIGHT_SANDBOX: docker
+      PREFLIGHT_WORKERS: "4"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    depends_on: [runner-image]

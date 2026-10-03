@@ -1,0 +1,14 @@
+{
+  "note": "Issues deliberately planted in fictional Paper A. Used only to score the audit, never read by it.",
+  "planted": [
+    {"sig": "difference:C", "what": "Paper states C = 1.0; configs/logreg.yaml uses C: 0.01", "expect": "material"},
+    {"sig": "difference:max_iter", "what": "Paper states max_iter = 1000; config uses 2000 (no effect)", "expect": "immaterial"},
+    {"sig": "paper_omission:test_size", "what": "Paper never states the split ratio; code uses 0.2", "expect": "material"},
+    {"sig": "code_omission:seeds", "what": "Paper averages 5 seeds; code hardcodes SEED = 42", "expect": "material"},
+    {"sig": "leakage:L1.3", "what": "SelectKBest fitted on all rows before train_test_split", "expect": "material"},
+    {"sig": "fragile:", "what": "SVM > k-NN holds only at the hardcoded seed", "expect": "material"},
+    {"sig": "overclaim:", "what": "'significantly outperforms' without a test", "expect": "material"},
+    {"sig": "env:sklearn-plot-confusion-matrix", "what": "Import removed in scikit-learn 1.2 crashes the tree baseline", "expect": "healed"},
+    {"sig": "untestable:", "what": "ViT-B/16 on ImageNet-1k needs GPUs and 150 GB of data", "expect": "material"}
+  ]
+}

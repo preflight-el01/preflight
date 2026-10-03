@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+shots/
+shots2/
+shots3/
+dist/frames/
+deck/tx/
+deck/shots/*_crop*.png
+deck/qr_demo.png
+c.json
+*.tmp
+# organiser template and the submission deck stay out of the public repo
+*.pptx
+deck/tpl_png/

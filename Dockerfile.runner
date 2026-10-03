@@ -1,0 +1,9 @@
+# Sandbox image for server-side runs (one container per experiment run).
+# docker run --rm --network none --cpus 1 --memory 2g --pids-limit 256 \
+#   --read-only --tmpfs /tmp -v "$RUN_DIR":/work:ro preflight-runner python src/train.py ...
+FROM python:3.13-slim
+RUN pip install --no-cache-dir scikit-learn==1.8.0 numpy==2.4.6 scipy pyyaml==6.0.3
+RUN useradd --create-home runner
+USER runner
+WORKDIR /work
+ENV PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1

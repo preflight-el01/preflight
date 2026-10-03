@@ -1,0 +1,4 @@
+model: logreg
+dataset: synthmed
+C: 1.0
+max_iter: 1000

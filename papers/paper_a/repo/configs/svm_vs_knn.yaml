@@ -1,0 +1,5 @@
+# SVM vs k-NN comparison, Table 1
+dataset: breast_cancer
+svm_C: 1.0
+svm_gamma: scale
+knn_n_neighbors: 5

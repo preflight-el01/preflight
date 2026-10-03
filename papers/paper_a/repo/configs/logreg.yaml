@@ -1,0 +1,5 @@
+# Logistic regression, Table 1
+model: logreg
+dataset: breast_cancer
+C: 0.01
+max_iter: 2000

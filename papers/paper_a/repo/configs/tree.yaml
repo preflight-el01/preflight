@@ -1,0 +1,4 @@
+# Decision tree baseline, Table 1
+model: tree
+dataset: breast_cancer
+max_depth: 4

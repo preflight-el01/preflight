@@ -1,0 +1,10 @@
+{
+  "note": "Issues deliberately planted in fictional Paper C. Used only to score the audit, never read by it.",
+  "planted": [
+    {"sig": "metric:macro_f1", "what": "Paper reports macro-F1; code computes f1_score(average='micro')", "expect": "material"},
+    {"sig": "unfair_baseline:", "what": "SVM tuned over 12 configs; logistic regression baseline gets 1", "expect": "material"},
+    {"sig": "overclaim:", "what": "'consistently outperforms' without a significance test", "expect": "material"},
+    {"sig": "leakage:L1.4", "what": "Re-sampling augmentation before the split copies rows into the test set", "expect": "material"}
+  ],
+  "scaled": "Table 4 (2M rows) is planted to exceed the memory budget and should be run scaled, verdict at most partial."
+}

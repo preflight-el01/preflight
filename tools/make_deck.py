@@ -228,6 +228,13 @@ def load():
     return R, dict(caught=caught, planted=planted, fa=fa, runs=runs, claims=claims)
 
 
+def n_tests():
+    """Counted from the test files, so the deck never states a number the suite does not have."""
+    tdir = os.path.join(ROOT, "tests")
+    return sum(len(re.findall(r"^def test_", open(os.path.join(tdir, f), encoding="utf-8").read(), re.M))
+               for f in os.listdir(tdir) if f.startswith("test_") and f.endswith(".py"))
+
+
 def qr(url, path):
     import qrcode
     q = qrcode.QRCode(border=1, box_size=12)
@@ -480,11 +487,11 @@ def slide6(s, R, T):
         text(s, x + 0.2, y + 0.82, 4.0, 0.7, [d], size=11.5, color=INK2, spacing=1.0)
     text(s, 0.66, 6.95, 9.0, 0.45, ["Tested, not promised"], size=17, font=BODY_B)
     tests = [f"{T['caught']}/{T['planted']} planted issues caught, {T['fa']} false alarms (clean control: 0 findings)",
-             "11 automated tests: planted, clean, live edits, real paper, server API",
+             f"{n_tests()} automated tests pass: planted, clean, edits, real paper, server",
              "Browser and laptop runs give identical numbers",
              "Live edits re-audited: fixing C turns C1 green; a new scaler leak is caught",
              "Server mode: HTTP submit, poll, idempotent cache, rate limits",
-             "Real 1993 paper: one claim exact, one flagged with the paper's own reason"]
+             "Real 1993 paper: one claim exact, one flagged, with its reason"]
     box(s, 0.66, 7.45, 9.0, 3.35, alpha=88)
     text(s, 0.9, 7.62, 8.6, 3.1, [[("✓  ", {"color": OK, "font": "Segoe UI Symbol"}), (t, {})] for t in tests],
          size=12.5, after=7)

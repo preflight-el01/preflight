@@ -34,4 +34,4 @@ Read README.md first. This file holds context the code doesn't.
 - After engine changes: `python -m pytest tests`, then `python tools/record.py`, then `python tools/build.py`.
 - Paper R is a real paper (Street, Wolberg & Mangasarian 1993); its repo is our reproduction code because the original released none. Label it as such everywhere.
 - Deck: tools/make_deck.py builds on deck/base.pptx (template + duplicated slide 7). Every number comes from web/recorded.json. Fonts are scaled 1.4x because the template canvas is 20 in wide. Render for QA through PowerPoint COM from a folder under %TEMP% (PowerPoint cannot see the app's virtualised workspace path).
-- Team name and public links are still to be supplied; the deck shows "Team Preflight" and orange "add link" placeholders until then.
+- Team name is "Team Preflight". Public links: demo https://preflight-el01.github.io/preflight/, repo https://github.com/preflight-el01/preflight. Submission file: deck/EL-01_TeamPreflight.pptx.

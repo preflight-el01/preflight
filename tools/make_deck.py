@@ -87,11 +87,11 @@ def text(slide, x, y, w, h, paras, size=16, color=NAVY, font=BODY, align=PP_ALIG
     return tb
 
 
-def picture(slide, path, x, y, w=None, h=None, crop_h=None, border=True):
+def picture(slide, path, x, y, w=None, h=None, crop_h=None, border=True, crop_w=None):
     img = Image.open(path)
-    if crop_h:
-        img = img.crop((0, 0, img.width, int(img.height * crop_h)))
-        path = path.replace(".png", f"_crop{int(crop_h * 100)}.png")
+    if crop_h or crop_w:
+        img = img.crop((0, 0, int(img.width * (crop_w or 1)), int(img.height * (crop_h or 1))))
+        path = path.replace(".png", f"_crop{int((crop_h or 1) * 100)}x{int((crop_w or 1) * 100)}.png")
         img.save(path)
     ar = img.width / img.height
     if w and h:
@@ -175,6 +175,14 @@ def notes(slide, t):
     slide.notes_slide.notes_text_frame.text = t
 
 
+def takeaway(slide, lead, rest):
+    """The one line a judge should remember, beside the title."""
+    box(slide, 12.95, 0.62, 5.45, 1.38, fill=NAVY, alpha=100, radius=0.12, name="Takeaway")
+    text(slide, 13.22, 0.74, 5.0, 0.3, ["THE POINT"], size=8.5, font=BODY_B, color=ORANGE)
+    text(slide, 13.22, 1.04, 5.0, 0.95, [[(lead, {"bold": True, "color": PEACH}), (rest, {})]],
+         size=11.5, color=WHITE, spacing=1.0, name="Takeaway text")
+
+
 def chip(slide, x, y, label, fill=NAVY, color=WHITE, size=11, w=None):
     w = w or (0.16 + 0.095 * len(label) * size / 11)
     b = box(slide, x, y, w, 0.34, fill=fill, alpha=100, radius=0.5)
@@ -249,9 +257,11 @@ def slide1(s, a, T):
 def slide2(s, R, T):
     set_title(s, "PROPOSED SOLUTION")
     drop_shape(s, "Proposed Solution and Core Concept")
-    text(s, 0.66, 2.72, 11.3, 1.0, [[("Others check whether a result reproduces. ", {"bold": True}),
-                                     ("Preflight checks whether you should believe it, and proves it with a re-run.", {})]],
-         size=15, spacing=1.0)
+    takeaway(s, "Reproducing is not enough. ", "We show whether to believe a result, and prove it with a re-run.")
+    text(s, 0.66, 2.68, 11.3, 1.1, [[("The problem: ", {"bold": True, "color": ORANGE}),
+                                     ("ML results can reproduce and still mislead: leaked test data, untuned baselines, lucky seeds.", {})],
+                                    [("Today's tools ", {"bold": True}), ("stop at “does it run?”. Preflight asks “should you believe it?”", {})]],
+         size=13, spacing=1.0, after=3)
     steps = [("1", "Paper + repo", "PDF read by Claude; repo by folder or GitHub"),
              ("2", "Claims", "every table cell and comparison"),
              ("3", "Runs", "sandboxed, over 10 seeds"),
@@ -303,7 +313,12 @@ def slide3(s, R, T):
             text(s, x + 0.15, y + 0.56, w - 0.25, 0.5, [d], size=9.3, color=INK2, spacing=1.0)
             if i < 5:
                 arrow(s, x + w + 0.03, y + h / 2, x + w + gap - 0.03, y + h / 2)
-    arrow(s, 0.66 + 5 * (w + gap) + w / 2, 2.72 + h + 0.02, 0.66 + w / 2, 2.72 + 1.36 - 0.02, color=MUTED)
+    xr, xl, ym = 0.66 + 5 * (w + gap) + w / 2, 0.66 + w / 2, 2.72 + h + 0.12
+    for x1, y1, x2, y2 in ((xr, 2.72 + h, xr, ym), (xr, ym, xl, ym)):
+        c = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
+        c.line.color.rgb, c.line.width = rgb(MUTED), Pt(2)
+    arrow(s, xl, ym, xl, 2.72 + 1.36, color=MUTED)
+    takeaway(s, "One AI step. ", "Everything after it is deterministic, sandboxed and repeatable.")
     text(s, 0.66, 5.32, 18.6, 0.75, [[("Dashed = the only AI step (claim extraction, checked by a person). ", {"bold": True, "color": ORANGE}),
                                     ("Everything after it is deterministic: static analysis, sandboxed execution, statistics and counterfactual re-runs.", {})]],
          size=11.5, spacing=1.0)
@@ -325,6 +340,7 @@ def slide3(s, R, T):
 
 def slide4(s, R, T):
     set_title(s, "INNOVATION AND UNIQUENESS")
+    takeaway(s, "Others say whether. ", "Preflight shows why, and catches results that reproduce but mislead.")
     drop_shape(s, "Innovative Approach")
     cols = ["", "Runs code", "Per-claim verdict", "Explains why (re-run)", "Leakage check", "Fragility / seeds",
             "False-alarm control", "Metric & baseline audit"]
@@ -375,6 +391,7 @@ def slide4(s, R, T):
 
 def slide5(s, R, T):
     set_title(s, "FEASIBILITY AND VIABILITY")
+    takeaway(s, "Built and running today. ", "Every demo audit finishes within a minute, on a CPU, in the browser.")
     drop_shape(s, "Technical and Operational")
     names = {"paper_a": "A · planted (7 claims)", "paper_b": "B · clean control", "paper_c": "C · planted (6 claims)",
              "paper_r": "R · real, Street et al. 1993"}
@@ -396,7 +413,7 @@ def slide5(s, R, T):
     table(s, 0.66, 6.95, 9.0, rows2, [3.0, 6.0], size=11.5, row_h=0.55)
     modes = [("Browser", "Pyodide in a Web Worker. Zero server cost, nothing leaves the laptop. Works today."),
              ("Server", "FastAPI, job queue, one Docker container per run, result cache by content hash. Tested."),
-             ("CI / author mode", "GitHub Action re-audits on every push and updates a README badge.")]
+             ("CI / author mode", "The CLI writes a GitHub Action that re-audits on every push, plus a README badge.")]
     text(s, 10.3, 2.72, 9.0, 0.45, ["Three ways to deploy, one engine"], size=17, font=BODY_B)
     for i, (t, d) in enumerate(modes):
         y = 3.3 + i * 1.32
@@ -415,6 +432,7 @@ def slide5(s, R, T):
 
 def slide6(s, R, T):
     set_title(s, "IMPACT AND SCALING")
+    takeaway(s, "Success is cheap. ", "Audits run in the user's browser, so 10× users is mostly static hosting.")
     drop_shape(s, "Target Users")
     users = [("Reviewers & repro chairs", "triage artifact submissions in minutes, with evidence to cite"),
              ("Students & MLRC", "reproduce a paper for coursework and learn why it differs"),
@@ -431,10 +449,11 @@ def slide6(s, R, T):
              "11 automated tests: planted, clean, live edits, real paper, server API",
              "Browser and laptop runs give identical numbers",
              "Live edits re-audited: fixing C turns C1 green; a new scaler leak is caught",
-             "Server mode: HTTP submit, poll, idempotent cache, rate limits"]
+             "Server mode: HTTP submit, poll, idempotent cache, rate limits",
+             "Real 1993 paper: one claim exact, one flagged with the paper's own reason"]
     box(s, 0.66, 7.45, 9.0, 3.35, alpha=88)
     text(s, 0.9, 7.62, 8.6, 3.1, [[("✓  ", {"color": OK, "font": "Segoe UI Symbol"}), (t, {})] for t in tests],
-         size=12.5, after=6)
+         size=12.5, after=7)
     box(s, 10.2, 2.72, 9.1, 8.08, fill=NAVY, alpha=100)
     text(s, 10.5, 2.92, 8.5, 1.1, [[("YC says yes tomorrow. ", {"bold": True, "color": PEACH, "size": 19}),
                                     ("Can it handle success next week?", {"size": 19})]], color=WHITE, spacing=1.0)
@@ -454,6 +473,7 @@ def slide6(s, R, T):
 
 def slide7(s, R, T, a):
     set_title(s, "RESEARCH AND REFERENCES")
+    takeaway(s, "Still unsolved. ", "Top agents replicate under a third of papers; top LLMs find under half the discrepancies.")
     drop_shape(s, "Research Background")
     facts = [("21–27%", "best agents on PaperBench vs 41% for ML PhDs: replication is still hard (OpenAI, 2025)"),
              ("46.7%", "of real paper–code discrepancies found by the best LLMs (SciCoQA, ACL 2026)"),
@@ -498,15 +518,27 @@ def slide7(s, R, T, a):
 
 def slide8(s, R, T):
     set_title(s, "LIVE PROOF")
+    takeaway(s, "Proof, not promises. ", "Four findings from the real app, each backed by a re-run.")
     drop_shape(s, "Research Background")
     text(s, 0.66, 2.72, 18.6, 0.5, ["Screens from the sample reproducibility report: each one is a re-run, not an opinion"],
          size=16, font=BODY_B)
     panels = [("attr.png", None, "Why C1 fails: one config value explains 96% of the gap"),
-              ("leak.png", 0.46, "Why C5 cannot be trusted: the leak, the patch, the drop"),
+              ("leak.png", 0.42, "Why C5 cannot be trusted: the leak, the patch, the drop"),
               ("frag.png", None, "Why C7 is fragile: 15 of 30 conditions"),
               ("real.png", None, "A real paper: one claim exact, one optimistic, and the paper's own reason")]
     slots = [(0.66, 3.35, 9.05, 3.5), (10.25, 3.35, 9.05, 3.5), (0.66, 7.55, 9.05, 2.75), (10.25, 7.55, 9.05, 2.75)]
     for (img, crop, cap), (x, y, w, h) in zip(panels, slots):
+        if img == "real.png":
+            pw, ph = picture(s, os.path.join(SHOTS, img), x + 0.06, y, h=h, crop_w=0.665)
+            cx = x + pw + 0.35
+            box(s, cx, y - 0.06, x + w - cx, ph + 0.12, fill=NAVY, alpha=100)
+            text(s, cx + 0.22, y + 0.12, x + w - cx - 0.4, ph - 0.2, [
+                [("Real paper", {"bold": True, "color": PEACH, "size": 13})],
+                ["Street, Wolberg & Mangasarian, 1993."],
+                ["The authors released no code, so the repo is our reproduction."]],
+                size=11, color=WHITE, spacing=1.0, after=5)
+            text(s, x, y + ph + 0.14, w, 0.4, [cap], size=12, color=NAVY, font=BODY_B)
+            continue
         pw, ph = picture(s, os.path.join(SHOTS, img), x + 0.06, y, w=w - 0.12, h=h, crop_h=crop)
         text(s, x, y + ph + 0.14, w, 0.4, [cap], size=12, color=NAVY, font=BODY_B)
     notes(s, "These are screenshots of the real app. The full report exports as Markdown and JSON with run hashes.")

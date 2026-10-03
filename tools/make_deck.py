@@ -80,6 +80,8 @@ def text(slide, x, y, w, h, paras, size=16, color=NAVY, font=BODY, align=PP_ALIG
             f.size = Pt(round(o.get("size", size) * FS_TEXT, 1))
             f.bold = False
             f.color.rgb = rgb(o.get("color", color))
+            if o.get("link"):  # link the whole box: run hyperlinks get PowerPoint's blue
+                tb.click_action.hyperlink.address = o["link"]
     if name:
         tb.name = name
     return tb
@@ -477,11 +479,11 @@ def slide7(s, R, T, a):
     for i, (t, u) in enumerate(links):
         y = 3.65 + i * 0.85
         text(s, 10.55, y, 2.6, 0.5, [t], size=14, font=BODY_B, color=WHITE)
-        text(s, 13.1, y, 4.2, 0.7, [u or "add link before submitting"], size=12.5,
-             color=WHITE if u else ORANGE, spacing=1.0)
+        text(s, 13.1, y, 4.2, 0.8, [[(u.replace("https://", "") if u else "add link before submitting",
+                                      {"link": u, "color": WHITE if u else ORANGE})]], size=11.5, spacing=1.0)
     if a.demo_url:
         s.shapes.add_picture(qr(a.demo_url, os.path.join(DECK, "qr_demo.png")), Inches(17.4), Inches(3.55), Inches(1.65), Inches(1.65))
-    text(s, 10.55, 6.3, 8.5, 1.1, ["In the app: press Tour for a 90-second walkthrough, Ctrl K to search, "
+    text(s, 10.55, 6.62, 8.5, 0.9, ["In the app: press Tour for a 90-second walkthrough, Ctrl K to search, "
                                    "Audit your own to upload a PDF."], size=12, color=WHITE, spacing=1.0)
     box(s, 10.25, 7.75, 9.05, 3.05, alpha=88)
     text(s, 10.55, 7.92, 8.5, 2.8, [

@@ -65,6 +65,7 @@ def text(slide, x, y, w, h, paras, size=16, color=NAVY, font=BODY, align=PP_ALIG
     tf.word_wrap = True
     tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
     tf.vertical_anchor = anchor
+    urls, plain = set(), False
     for i, para in enumerate(paras):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.alignment = align
@@ -80,11 +81,35 @@ def text(slide, x, y, w, h, paras, size=16, color=NAVY, font=BODY, align=PP_ALIG
             f.size = Pt(round(o.get("size", size) * FS_TEXT, 1))
             f.bold = False
             f.color.rgb = rgb(o.get("color", color))
-            if o.get("link"):  # link the whole box: run hyperlinks get PowerPoint's blue
-                tb.click_action.hyperlink.address = o["link"]
+            if o.get("link"):
+                link_run(r, o["link"])
+                urls.add(o["link"])
+            elif t.strip():
+                plain = True
+    if len(urls) == 1 and not plain:  # a box that is one link: link the shape too (PDF export keeps shape links)
+        tb.click_action.hyperlink.address = urls.pop()
     if name:
         tb.name = name
     return tb
+
+
+HLINK_CLR = "{A12FA001-AC4F-418D-AE19-62706E023703}"
+AHYP = "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor"
+
+
+def link_run(r, url):
+    """Clickable in edit mode, slideshow and PDF; keeps the run's own colour instead of theme blue."""
+    r.hyperlink.address = url
+    r.font.underline = True
+    h = r._r.find(qn("a:rPr")).find(qn("a:hlinkClick"))
+    ext = etree.SubElement(etree.SubElement(h, qn("a:extLst")), qn("a:ext"))
+    ext.set("uri", HLINK_CLR)
+    etree.SubElement(ext, "{%s}hlinkClr" % AHYP, nsmap={"ahyp": AHYP}).set("val", "tx")
+
+
+def link_pic(pic, url):
+    pic.click_action.hyperlink.address = url
+    return pic
 
 
 def picture(slide, path, x, y, w=None, h=None, crop_h=None, border=True, crop_w=None):
@@ -105,7 +130,7 @@ def picture(slide, path, x, y, w=None, h=None, crop_h=None, border=True, crop_w=
         w = h * ar
     if border:
         box(slide, x - 0.06, y - 0.06, w + 0.12, h + 0.12, fill=WHITE, alpha=100, radius=0.03)
-    slide.shapes.add_picture(path, Inches(x), Inches(y), Inches(w), Inches(h))
+    slide._last_pic = slide.shapes.add_picture(path, Inches(x), Inches(y), Inches(w), Inches(h))
     return w, h
 
 
@@ -244,8 +269,10 @@ def slide1(s, a, T):
          (f"{T['caught']}/{T['planted']} planted issues caught, {T['fa']} false alarms.", {})]],
         size=10.8, spacing=1.0, after=4, name="Abstract text")
     if a.demo_url:
-        s.shapes.add_picture(qr(a.demo_url, os.path.join(DECK, "qr_demo.png")), Inches(16.2), Inches(6.95), Inches(1.6), Inches(1.6))
-        text(s, 16.05, 8.62, 1.9, 0.4, ["Scan: live demo"], size=11, align=PP_ALIGN.CENTER, font=BODY_B)
+        link_pic(s.shapes.add_picture(qr(a.demo_url, os.path.join(DECK, "qr_demo.png")), Inches(16.2), Inches(6.95),
+                                      Inches(1.6), Inches(1.6)), a.demo_url)
+        text(s, 15.75, 8.62, 2.5, 0.4, [[("Open the live demo", {"link": a.demo_url, "bold": True})]], size=11,
+             align=PP_ALIGN.CENTER)
     else:
         b = box(s, 16.2, 6.95, 1.6, 1.6, fill=WHITE, alpha=100, line=ORANGE, radius=0.05)
         b.line.dash_style = 4
@@ -254,7 +281,7 @@ def slide1(s, a, T):
              "explains every gap with a re-run, not an opinion.")
 
 
-def slide2(s, R, T):
+def slide2(s, R, T, D):
     set_title(s, "PROPOSED SOLUTION")
     drop_shape(s, "Proposed Solution and Core Concept")
     takeaway(s, "Reproducing is not enough. ", "We show whether to believe a result, and prove it with a re-run.")
@@ -289,6 +316,10 @@ def slide2(s, R, T):
     w2, h2 = picture(s, os.path.join(SHOTS, "claims.png"), 12.55, 2.78, w=6.75)
     text(s, 12.55, 2.78 + h2 + 0.14, 6.75, 0.4, ["Claim Ledger for Paper A: every number, its verdict and its cause"],
          size=11, color=INK2)
+    if D:
+        link_pic(s._last_pic, D + "#paper_a-claims")
+        text(s, 12.55, 2.78 + h2 + 0.62, 6.75, 0.4,
+             [[("Open this ledger live \u2192", {"link": D + "#paper_a-claims", "bold": True, "color": ORANGE})]], size=12)
     notes(s, "Five steps from paper to verdict to why. The table maps every objective in the problem statement to a feature.")
 
 
@@ -389,7 +420,7 @@ def slide4(s, R, T):
     notes(s, "Every competitor stops at whether. We go to why, and to whether a passing number deserves trust.")
 
 
-def slide5(s, R, T):
+def slide5(s, R, T, D):
     set_title(s, "FEASIBILITY AND VIABILITY")
     takeaway(s, "Built and running today. ", "Every demo audit finishes within a minute, on a CPU, in the browser.")
     drop_shape(s, "Technical and Operational")
@@ -402,6 +433,9 @@ def slide5(s, R, T):
     text(s, 0.66, 2.72, 9.0, 0.45, ["Every demo audit runs on a CPU in seconds"], size=17, font=BODY_B)
     table(s, 0.66, 3.25, 9.0, rows, [3.3, 1.55, 1.25, 1.45, 1.45], size=12, row_h=0.5)
     text(s, 0.66, 5.82, 9.0, 0.4, ["Browser: Pyodide 314.0.7 in Chrome. Live and recorded runs match exactly."], size=10, color=MUTED)
+    if D:
+        text(s, 4.9, 2.78, 4.76, 0.4, [[("Run Paper A live \u2192", {"link": D + "#paper_a", "bold": True, "color": ORANGE})]],
+             size=11.5, align=PP_ALIGN.RIGHT)
     rows2 = [["Risk", "Mitigation"],
              ["PDF tables misread", "Claude with a JSON schema, then a person confirms the claims"],
              ["LLM hallucination", "LLM only extracts; every finding is a re-run"],
@@ -495,16 +529,22 @@ def slide7(s, R, T, a):
     text(s, 0.66, 7.45, 9.2, 3.4, refs, size=11, color=INK2, spacing=1.0, after=5)
     box(s, 10.25, 2.78, 9.05, 4.75, fill=NAVY, alpha=100)
     text(s, 10.55, 2.98, 8.5, 0.5, ["Try it"], size=19, font=BODY_B, color=PEACH)
-    links = [("Live demo", a.demo_url), ("Code (MIT)", a.repo_url), ("90-second video", a.video_url)]
-    for i, (t, u) in enumerate(links):
-        y = 3.65 + i * 0.85
-        text(s, 10.55, y, 2.6, 0.5, [t], size=14, font=BODY_B, color=WHITE)
-        text(s, 13.1, y, 4.2, 0.8, [[(u.replace("https://", "") if u else "add link before submitting",
-                                      {"link": u, "color": WHITE if u else ORANGE})]], size=11.5, spacing=1.0)
+    links = [("Live demo", a.demo_url, a.demo_url and a.demo_url.replace("https://", "").rstrip("/")),
+             ("Code (MIT)", a.repo_url, a.repo_url and a.repo_url.replace("https://", "")),
+             ("Video", a.video_url, "Watch the 90-second walkthrough"),
+             ("Test kit", a.kit_url, "A test paper with planted bugs")]
+    for i, (t, u, shown) in enumerate(links):
+        y = 3.62 + i * 0.68
+        text(s, 10.55, y, 2.2, 0.5, [t], size=14, font=BODY_B, color=WHITE)
+        text(s, 12.75, y + 0.04, 4.5, 0.6, [[(shown if u else "add link before submitting",
+                                              {"link": u, "color": PEACH if u else ORANGE})]], size=11.5, spacing=1.0)
     if a.demo_url:
-        s.shapes.add_picture(qr(a.demo_url, os.path.join(DECK, "qr_demo.png")), Inches(17.4), Inches(3.55), Inches(1.65), Inches(1.65))
-    text(s, 10.55, 6.62, 8.5, 0.9, ["In the app: press Tour for a 90-second walkthrough, Ctrl K to search, "
-                                   "Audit your own to upload a PDF."], size=12, color=WHITE, spacing=1.0)
+        link_pic(s.shapes.add_picture(qr(a.demo_url, os.path.join(DECK, "qr_demo.png")), Inches(17.4), Inches(3.55),
+                                      Inches(1.65), Inches(1.65)), a.demo_url)
+    tour = [("Tour", {"link": a.demo_url + "#tour", "bold": True, "color": PEACH})] if a.demo_url else [("Tour", {})]
+    text(s, 10.55, 6.5, 8.5, 0.9, [[("In the app: press ", {})] + tour +
+                                   [(" for a guided walkthrough, Ctrl K to search, Audit your own to upload a PDF.", {})]],
+         size=12, color=WHITE, spacing=1.0)
     box(s, 10.25, 7.75, 9.05, 3.05, alpha=88)
     text(s, 10.55, 7.92, 8.5, 2.8, [
         [("Datasets", {"bold": True})],
@@ -516,18 +556,20 @@ def slide7(s, R, T, a):
     notes(s, "Every number in this deck is measured. The competitor numbers come from their papers.")
 
 
-def slide8(s, R, T):
+def slide8(s, R, T, D):
     set_title(s, "LIVE PROOF")
     takeaway(s, "Proof, not promises. ", "Four findings from the real app, each backed by a re-run.")
     drop_shape(s, "Research Background")
-    text(s, 0.66, 2.72, 18.6, 0.5, ["Screens from the sample reproducibility report: each one is a re-run, not an opinion"],
+    text(s, 0.66, 2.72, 18.6, 0.5, ["Each screen is a re-run, not an opinion. Click any one to open it live in the app."],
          size=16, font=BODY_B)
-    panels = [("attr.png", None, "Why C1 fails: one config value explains 96% of the gap"),
-              ("leak.png", 0.42, "Why C5 cannot be trusted: the leak, the patch, the drop"),
-              ("frag.png", None, "Why C7 is fragile: 15 of 30 conditions"),
-              ("real.png", None, "A real paper: one claim exact, one optimistic, and the paper's own reason")]
+    panels = [("attr.png", None, "Why C1 fails: one config value explains 96% of the gap", "#paper_a-C1"),
+              ("leak.png", 0.42, "Why C5 cannot be trusted: the leak, the patch, the drop", "#paper_a-C5"),
+              ("frag.png", None, "Why C7 is fragile: 15 of 30 conditions", "#paper_a-C7"),
+              ("real.png", None, "A real paper: one claim exact, one optimistic, and its reason", "#paper_r")]
     slots = [(0.66, 3.35, 9.05, 3.5), (10.25, 3.35, 9.05, 3.5), (0.66, 7.55, 9.05, 2.75), (10.25, 7.55, 9.05, 2.75)]
-    for (img, crop, cap), (x, y, w, h) in zip(panels, slots):
+    for (img, crop, cap, anchor), (x, y, w, h) in zip(panels, slots):
+        url = D + anchor if D else None
+        cap_runs = [[(cap + (" \u2192" if url else ""), {"link": url} if url else {})]]
         if img == "real.png":
             pw, ph = picture(s, os.path.join(SHOTS, img), x + 0.06, y, h=h, crop_w=0.665)
             cx = x + pw + 0.35
@@ -537,10 +579,14 @@ def slide8(s, R, T):
                 ["Street, Wolberg & Mangasarian, 1993."],
                 ["The authors released no code, so the repo is our reproduction."]],
                 size=11, color=WHITE, spacing=1.0, after=5)
-            text(s, x, y + ph + 0.14, w, 0.4, [cap], size=12, color=NAVY, font=BODY_B)
+            if url:
+                link_pic(s._last_pic, url)
+            text(s, x, y + ph + 0.14, w, 0.4, cap_runs, size=12, color=NAVY, font=BODY_B)
             continue
         pw, ph = picture(s, os.path.join(SHOTS, img), x + 0.06, y, w=w - 0.12, h=h, crop_h=crop)
-        text(s, x, y + ph + 0.14, w, 0.4, [cap], size=12, color=NAVY, font=BODY_B)
+        if url:
+            link_pic(s._last_pic, url)
+        text(s, x, y + ph + 0.14, w, 0.4, cap_runs, size=12, color=NAVY, font=BODY_B)
     notes(s, "These are screenshots of the real app. The full report exports as Markdown and JSON with run hashes.")
 
 
@@ -556,6 +602,7 @@ def main():
     ap.add_argument("--demo-url")
     ap.add_argument("--repo-url")
     ap.add_argument("--video-url")
+    ap.add_argument("--kit-url")
     a = ap.parse_args()
     R, T = load()
     prs = Presentation(os.path.join(DECK, "base.pptx"))
@@ -563,13 +610,15 @@ def main():
     delete_slide(prs, 8)  # instructions
     S = prs.slides
     slide1(S[0], a, T)
-    slide2(S[1], R, T)
+    a.kit_url = a.kit_url or (a.demo_url and a.demo_url.rstrip("/") + "/preflight-test-kit.zip")
+    D = a.demo_url.rstrip("/") + "/" if a.demo_url else None
+    slide2(S[1], R, T, D)
     slide3(S[2], R, T)
     slide4(S[3], R, T)
-    slide5(S[4], R, T)
+    slide5(S[4], R, T, D)
     slide6(S[5], R, T)
     slide7(S[6], R, T, a)
-    slide8(S[7], R, T)
+    slide8(S[7], R, T, D)
     name = "EL-01_" + re.sub(r"[^A-Za-z0-9]+", "", a.team.replace("Team", "")) + ".pptx"
     out = os.path.join(DECK, name)
     prs.save(out)
